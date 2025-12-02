@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  guacd:
+    container_name: guacamole_guacd
+    image: guacamole/guacd
+    networks:
+      - guacamole-net
+    restart: unless-stopped
+    # As pastas 'drive' e 'record' devem ser criadas manualmente no mesmo diretório do docker-compose.yml
+    volumes:
+      - ./drive:/drive:rw
+      - ./record:/record:rw
+
+  postgres:
+    container_name: guacamole_postgres
+    image: postgres:15-alpine
+    networks:
+      - guacamole-net
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: guacamole_db
+      POSTGRES_USER: guacamole_user
+      # IMPORTANTE: Troque "StrongPasswordHere" por uma senha forte e segura.
+      POSTGRES_PASSWORD: guacmolepassword
+    volumes:
+      - guacamole_data:/var/lib/postgresql/data
+      - ./initdb.sql:/docker-entrypoint-initdb.d/initdb.sql
+
+  guacamole:
+    container_name: guacamole
+    image: guacamole/guacamole
+    networks:
+      - guacamole-net
+    restart: unless-stopped
+    depends_on:
+      - guacd
+      - postgres
+    ports:
+      - '8080:8080'
+    environment:
+      GUACD_HOSTNAME: guacd
+      GUACAMOLE_EXTENSIONS: auth-jdbc-postgresql
+      POSTGRESQL_HOSTNAME: postgres
+      POSTGRESQL_DATABASE: guacamole_db
+      POSTGRESQL_USER: guacamole_user
+      POSTGRESQL_PASSWORD: guacmolepassword
+      GUACADMIN_USERNAME: guacadmin
+      GUACADMIN_PASSWORD: zebraanimal12
+
+networks:
+  guacamole-net:
+    driver: bridge
+
+volumes:
+  guacamole_data:
